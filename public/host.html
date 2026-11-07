@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#120a1f">
+  <title>Host · Quiz de Halloween</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const FORMAS = ['▲', '◆', '●', '■'];
+    const app = document.getElementById('app');
+    const socket = io();
+    const joinUrl = location.origin + '/';
+    let state = null;
+    let timerLoop = null;
+
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const getSenha = () => { try { return sessionStorage.getItem('senha'); } catch { return null; } };
+    const setSenha = (v) => { try { sessionStorage.setItem('senha', v); } catch {} };
+
+    // aceita ?senha=... na URL
+    const urlSenha = new URLSearchParams(location.search).get('senha');
+    if (urlSenha) setSenha(urlSenha);
+
+    socket.on('connect', () => {
+      const senha = getSenha();
+      if (senha) socket.emit('host:auth', senha, (r) => { if (!r.ok) telaLogin('Senha errada'); });
+      else telaLogin();
+    });
+
+    socket.on('host:state', (s) => { state = s; render(); });
+
+    function telaLogin(erro = '') {
+      app.innerHTML = `
+        <div class="grow">
+          <div class="logo">🧙‍♀️</div>
+          <h1>Painel do host</h1>
+          <form id="f" class="card">
+            <input id="senha" type="password" placeholder="Senha do host" autofocus>
+            <button class="full" type="submit">Entrar</button>
+            <div class="erro-msg">${esc(erro)}</div>
+          </form>
+        </div>`;
+      document.getElementById('f').onsubmit = (e) => {
+        e.preventDefault();
+        const senha = document.getElementById('senha').value;
+        socket.emit('host:auth', senha, (r) => {
+          if (r.ok) setSenha(senha); else telaLogin('Senha errada');
+        });
+      };
+    }
+
+    const ROTULO = {
+      lobby: '▶️ Começar o jogo',
+      question: '⏭️ Encerrar tempo e revelar',
+      reveal: '🏆 Mostrar ranking',
+      podium: null,
+    };
+
+    function botaoAvancar(s) {
+      let r = ROTULO[s.phase];
+      if (s.phase === 'leaderboard') r = s.numero >= s.total ? '🥇 Mostrar pódio' : `➡️ Pergunta ${s.numero + 1}`;
+      if (!r) return '';
+      const desab = s.phase === 'lobby' && s.players.length === 0 ? 'disabled' : '';
+      return `<button class="full" id="avancar" ${desab}>${r}</button>`;
+    }
+
+    function render() {
+      const s = state;
+      clearInterval(timerLoop);
+      const nomeFase = { lobby: 'Lobby', question: 'Pergunta no ar', reveal: 'Resposta revelada', leaderboard: 'Ranking', podium: 'Pódio' }[s.phase];
+
+      let meio = '';
+      if (s.phase === 'lobby') {
+        meio = `<div class="card centro">
+            <h3>Chame a galera 👻</h3>
+            <div id="qr" class="qr"></div>
+            <div class="link">${esc(joinUrl)}</div>
+          </div>`;
+      } else if (s.question && s.phase !== 'podium') {
+        const q = s.question;
+        meio = `<div class="card">
+            <div class="topo"><span>Pergunta ${s.numero}/${s.total}</span>
+              ${s.phase === 'question' ? `<span class="pill" id="tnum"></span>` : ''}</div>
+            <div class="pergunta">${esc(q.texto)}</div>
+            <div class="alts">
+              ${q.alternativas.map((a, i) => `
+                <div class="alt alt${i} ${i === q.correta ? 'certa' : ''}">
+                  <span class="forma">${i === q.correta ? '✔' : FORMAS[i]}</span>${esc(a)}
+                  ${s.phase !== 'question' ? `<span class="conta">${s.distribution[i]}</span>` : ''}
+                </div>`).join('')}
+            </div>
+            ${s.phase === 'question' ? `<p class="centro" style="margin-top:12px"><b>${s.answered}</b> de <b>${s.connected}</b> responderam</p>` : ''}
+          </div>`;
+      } else if (s.phase === 'podium') {
+        meio = `<div class="card centro"><div class="logo">🏆</div><h2>Fim de jogo!</h2>
+          <p class="sub">O pódio está aparecendo no celular de todo mundo.</p></div>`;
+      }
+
+      app.innerHTML = `
+        <div class="topo"><span class="pill">🧙‍♀️ Host</span><span class="pill">${nomeFase}</span></div>
+        <div class="host-grid">
+          ${meio}
+          ${botaoAvancar(s)}
+          <div class="card">
+            <h3>Jogadores (${s.players.length}) · ${s.connected} online</h3>
+            <ul class="lista">
+              ${s.players.map((p, i) => `
+                <li class="${p.connected ? '' : 'off'}">
+                  <span class="pos">${i + 1}º</span>
+                  <span class="nome">${s.phase === 'question' ? (p.answered ? '✅ ' : '⏳ ') : ''}${esc(p.name)}</span>
+                  <b>${p.score}</b>
+                  <button class="pequeno secundario" data-kick="${p.id}" title="Remover">✕</button>
+                </li>`).join('') || '<li class="sub">Ninguém entrou ainda</li>'}
+            </ul>
+          </div>
+          <button class="secundario full" id="reset">🔄 Reiniciar jogo (zera os pontos)</button>
+        </div>`;
+
+      const av = document.getElementById('avancar');
+      if (av) av.onclick = () => socket.emit('host:advance');
+      document.getElementById('reset').onclick = () => {
+        if (confirm('Reiniciar o jogo e zerar todos os pontos?')) socket.emit('host:reset');
+      };
+      app.querySelectorAll('[data-kick]').forEach((b) => {
+        b.onclick = () => { if (confirm('Remover este jogador?')) socket.emit('host:kick', b.dataset.kick); };
+      });
+
+      if (s.phase === 'lobby') {
+        try { new QRCode(document.getElementById('qr'), { text: joinUrl, width: 200, height: 200 }); }
+        catch { document.getElementById('qr').style.display = 'none'; }
+      }
+
+      if (s.phase === 'question') {
+        const fim = Date.now() + s.remainingMs;
+        const tick = () => {
+          const el = document.getElementById('tnum');
+          const rest = Math.max(0, fim - Date.now());
+          if (el) el.textContent = `⏱️ ${Math.ceil(rest / 1000)}s`;
+          if (rest <= 0) clearInterval(timerLoop);
+        };
+        tick();
+        timerLoop = setInterval(tick, 250);
+      }
+    }
+  </script>
+</body>
+</html>

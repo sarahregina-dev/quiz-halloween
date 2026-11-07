@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" content="#120a1f">
+  <title>Quiz de Halloween 🎃</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const FORMAS = ['▲', '◆', '●', '■'];
+    const app = document.getElementById('app');
+    const socket = io();
+    let state = null;
+    let timerLoop = null;
+
+    // guarda o ID no navegador para reconectar com os mesmos pontos
+    const store = {
+      get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+      set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+      del: (k) => { try { localStorage.removeItem(k); } catch {} },
+    };
+
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    socket.on('connect', () => {
+      const id = store.get('playerId');
+      if (id) {
+        socket.emit('join', { playerId: id }, (r) => {
+          if (!r.ok) { store.del('playerId'); telaEntrada(); }
+        });
+      } else if (!state) {
+        telaEntrada();
+      }
+    });
+
+    socket.on('state', (s) => { state = s; render(); });
+
+    socket.on('kicked', () => {
+      store.del('playerId');
+      state = null;
+      clearInterval(timerLoop);
+      app.innerHTML = `<div class="grow centro"><div class="logo">🦇</div><h2>Você saiu do jogo</h2>
+        <button class="full" onclick="location.reload()">Entrar de novo</button></div>`;
+    });
+
+    function telaEntrada(erro = '') {
+      clearInterval(timerLoop);
+      app.innerHTML = `
+        <div class="grow">
+          <div class="logo">🎃</div>
+          <h1>Quiz de Halloween</h1>
+          <p class="sub">Digite seu apelido para entrar</p>
+          <form id="f" class="card">
+            <input id="nome" maxlength="16" placeholder="Seu apelido" autocomplete="off" autofocus>
+            <button class="full" type="submit">Entrar 👻</button>
+            <div class="erro-msg" id="erro">${esc(erro)}</div>
+          </form>
+        </div>`;
+      document.getElementById('f').onsubmit = (e) => {
+        e.preventDefault();
+        const name = document.getElementById('nome').value;
+        socket.emit('join', { name }, (r) => {
+          if (r.ok) store.set('playerId', r.playerId);
+          else document.getElementById('erro').textContent = r.erro;
+        });
+      };
+    }
+
+    const topo = (s) => `
+      <div class="topo">
+        <span class="pill">👤 ${esc(s.name)}</span>
+        <span class="pill">⭐ ${s.score} pts</span>
+      </div>`;
+
+    function render() {
+      const s = state;
+      clearInterval(timerLoop);
+      if (!s) return;
+
+      if (s.phase === 'lobby') {
+        app.innerHTML = `${topo(s)}
+          <div class="grow centro">
+            <div class="logo">🕸️</div>
+            <h2>Você está dentro!</h2>
+            <p class="sub pulse">Esperando o jogo começar...</p>
+            <div class="chips">${s.lobby.map((n) => `<span class="chip">${esc(n)}</span>`).join('')}</div>
+            <p class="sub" style="margin-top:16px">${s.lobby.length} jogador(es)</p>
+          </div>`;
+      }
+
+      else if (s.phase === 'question') {
+        const q = s.question;
+        if (s.answered) {
+          app.innerHTML = `${topo(s)}
+            <div class="grow centro">
+              <div class="logo">🔮</div>
+              <h2>Resposta enviada!</h2>
+              <p class="sub pulse">Esperando os outros...</p>
+              <button class="alt alt${s.choice}" style="margin:0 auto;max-width:320px;width:100%" disabled>
+                <span class="forma">${FORMAS[s.choice]}</span>${esc(q.alternativas[s.choice])}
+              </button>
+            </div>`;
+          return;
+        }
+        app.innerHTML = `${topo(s)}
+          <div class="topo"><span>Pergunta ${q.numero}/${q.total}</span></div>
+          <div class="timer-num" id="tnum"></div>
+          <div class="timer"><div id="tbar"></div></div>
+          <div class="pergunta">${esc(q.texto)}</div>
+          <div class="alts">
+            ${q.alternativas.map((a, i) => `
+              <button class="alt alt${i}" data-i="${i}"><span class="forma">${FORMAS[i]}</span>${esc(a)}</button>`).join('')}
+          </div>`;
+        app.querySelectorAll('.alt').forEach((b) => {
+          b.onclick = () => {
+            const i = Number(b.dataset.i);
+            socket.emit('answer', i);
+            state = { ...state, answered: true, choice: i };
+            render();
+          };
+        });
+        const fim = Date.now() + s.remainingMs;
+        const total = s.remainingMs || 1;
+        const tick = () => {
+          const rest = Math.max(0, fim - Date.now());
+          const n = document.getElementById('tnum'), b = document.getElementById('tbar');
+          if (n) n.textContent = Math.ceil(rest / 1000);
+          if (b) b.style.width = (rest / total) * 100 + '%';
+          if (rest <= 0) clearInterval(timerLoop);
+        };
+        tick();
+        timerLoop = setInterval(tick, 200);
+      }
+
+      else if (s.phase === 'reveal') {
+        const q = s.question;
+        const naoRespondeu = s.choice === null;
+        const caixa = s.correct
+          ? `<div class="resultado ok"><div class="grande">✅</div><h2>Acertou!</h2>
+               <div class="pts">+${s.gain}</div>${s.streak > 1 ? `<p>🔥 ${s.streak} seguidas!</p>` : ''}</div>`
+          : `<div class="resultado erro"><div class="grande">${naoRespondeu ? '⏰' : '💀'}</div>
+               <h2>${naoRespondeu ? 'Tempo esgotado!' : 'Errou!'}</h2></div>`;
+        app.innerHTML = `${topo(s)}
+          ${caixa}
+          <p class="centro">Você está em <b>${s.rank}º</b> de ${s.totalPlayers}</p>
+          <div class="pergunta" style="font-size:1.1rem">${esc(q.texto)}</div>
+          <div class="alts">
+            ${q.alternativas.map((a, i) => `
+              <div class="alt alt${i} ${i === s.correta ? 'certa' : 'apagada'}">
+                <span class="forma">${i === s.correta ? '✔' : FORMAS[i]}</span>${esc(a)}
+                <span class="conta">${s.distribution[i]}</span>
+              </div>`).join('')}
+          </div>`;
+      }
+
+      else if (s.phase === 'leaderboard') {
+        app.innerHTML = `${topo(s)}
+          <h2 class="centro">🏆 Ranking</h2>
+          <p class="sub">Depois da pergunta ${s.numero} de ${s.total}</p>
+          <ul class="lista">
+            ${s.top.map((p, i) => `<li class="${p.name === s.name ? 'eu' : ''}">
+              <span class="pos">${i + 1}º</span><span class="nome">${esc(p.name)}</span><b>${p.score}</b></li>`).join('')}
+          </ul>
+          ${s.rank > s.top.length ? `<ul class="lista"><li class="eu"><span class="pos">${s.rank}º</span>
+            <span class="nome">${esc(s.name)}</span><b>${s.score}</b></li></ul>` : ''}
+          <p class="sub pulse" style="margin-top:16px">${s.isLast ? 'Preparando o pódio... 👀' : 'Próxima pergunta em instantes...'}</p>`;
+      }
+
+      else if (s.phase === 'podium') {
+        const [p1, p2, p3] = s.top;
+        const degrau = (p, n) => p ? `<div class="degrau d${n}">
+            <div class="quem">${esc(p.name)}</div><div class="pontos">${p.score} pts</div>
+            <div class="bloco">${n}º</div></div>` : `<div class="degrau"></div>`;
+        app.innerHTML = `${topo(s)}
+          <h1>🎃 Pódio 🎃</h1>
+          <div class="podio">${degrau(p2, 2)}${degrau(p1, 1)}${degrau(p3, 3)}</div>
+          <p class="centro" style="font-size:1.2rem">Você terminou em <b>${s.rank}º lugar</b> com <b>${s.score}</b> pontos!</p>
+          <p class="sub">Feliz Halloween! 🦇</p>`;
+      }
+    }
+  </script>
+</body>
+</html>

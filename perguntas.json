@@ -1,0 +1,17 @@
+[
+  { "texto": "Como se chama a van da turma do Scooby?", "alternativas": ["Scooby Van", "Furgão Fantasma", "Máquina de Mistério", "Mistério Móvel"], "correta": 2 },
+  { "texto": "Onde surgiu o Halloween?", "alternativas": ["EUA", "Irlanda", "Inglaterra", "México"], "correta": 1 },
+  { "texto": "Em O Iluminado, qual é o quarto proibido no filme?", "alternativas": ["213", "666", "217", "237"], "correta": 3 },
+  { "texto": "Qual é o nome do defunto da decoração?", "alternativas": ["Jaime", "Janson", "Jack", "Janio"], "correta": 0 },
+  { "texto": "Frankenstein é o nome do...?", "alternativas": ["Monstro", "Cientista", "Autor do livro", "Diretor"], "correta": 1 },
+  { "texto": "Qual é o nome do boneco do triciclo de Jogos Mortais?", "alternativas": ["Chucky", "Jigsaw", "Billy", "Saw"], "correta": 2 },
+  { "texto": "Qual é a primeira pergunta do Ghostface ao telefone?", "alternativas": ["\"Qual seu filme de terror favorito?\"", "\"Você está sozinha?\"", "\"Sabe quem sou eu?\"", "\"Quer brincar?\""], "correta": 0 },
+  { "texto": "Os pais de qual personagem morreram na noite de Halloween?", "alternativas": ["Mogli", "Elsa (Frozen)", "Batman", "Harry Potter"], "correta": 3 },
+  { "texto": "O que significa \"Drácula\"?", "alternativas": ["Bebedor de sangue", "Filho do dragão", "Morcego negro", "Senhor da noite"], "correta": 1 },
+  { "texto": "Em qual país fica a Transilvânia?", "alternativas": ["Hungria", "É um lugar inventado", "Romênia", "Rússia"], "correta": 2 },
+  { "texto": "No clipe de Thriller, em que o Michael Jackson se transforma primeiro?", "alternativas": ["Vampiro", "Esqueleto", "Zumbi", "Lobisomem"], "correta": 3 },
+  { "texto": "Qual é o nome da menina possuída em O Exorcista?", "alternativas": ["Regan", "Samara", "Carrie", "Emily"], "correta": 0 },
+  { "texto": "Qual destes filmes não faz parte do universo Invocação do Mal?", "alternativas": ["Annabelle", "A Maldição da Chorona", "Atividade Paranormal", "A Freira"], "correta": 2 },
+  { "texto": "Em It, de quantos em quantos anos o Pennywise volta?", "alternativas": ["13", "27", "666", "30"], "correta": 1 },
+  { "texto": "Quantas estrelas tem a placa de tirar fotos?", "alternativas": ["28", "24", "30", "26"], "correta": 3, "tempo": 30 }
+]
