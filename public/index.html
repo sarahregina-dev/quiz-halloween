@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="theme-color" content="#120a1f">
-  <title>Quiz de Halloween 🎃</title>
+  <meta name="theme-color" content="#0a0405">
+  <title>Quiz Raloin · Barcelona Produções</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Butcherman&family=Montserrat:wght@400;700;800&family=Nosifer&display=swap">
+  <link rel="icon" href="/img/logo.jpg">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -12,7 +16,9 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const FORMAS = ['▲', '◆', '●', '■'];
+    const ic = (n) => `<i class="ic" style="--m:url(/img/icons/${n}.svg)"></i>`;
+    const FORMAS = ['skull-crack', 'evil-bat', 'pumpkin-lantern', 'spectre'].map(ic);
+    const CERTA = ic('check-mark');
     const app = document.getElementById('app');
     const socket = io();
     let state = null;
@@ -44,7 +50,7 @@
       store.del('playerId');
       state = null;
       clearInterval(timerLoop);
-      app.innerHTML = `<div class="grow centro"><div class="logo">🦇</div><h2>Você saiu do jogo</h2>
+      app.innerHTML = `<div class="grow centro"><div class="logo">${ic('evil-bat')}</div><h2>Você saiu do jogo</h2>
         <button class="full" onclick="location.reload()">Entrar de novo</button></div>`;
     });
 
@@ -52,12 +58,15 @@
       clearInterval(timerLoop);
       app.innerHTML = `
         <div class="grow">
-          <div class="logo">🎃</div>
-          <h1>Quiz de Halloween</h1>
+          <img class="marca" src="/img/logo.jpg" alt="Barcelona Produções">
+          <div class="selo">FESTA</div>
+          <h1>Quiz Raloin</h1>
+          <div class="risco"></div>
+          <p class="tagline">Assustador de arrepiar!</p>
           <p class="sub">Digite seu apelido para entrar</p>
           <form id="f" class="card">
             <input id="nome" maxlength="16" placeholder="Seu apelido" autocomplete="off" autofocus>
-            <button class="full" type="submit">Entrar 👻</button>
+            <button class="full" type="submit">Entrar</button>
             <div class="erro-msg" id="erro">${esc(erro)}</div>
           </form>
         </div>`;
@@ -73,8 +82,7 @@
 
     const topo = (s) => `
       <div class="topo">
-        <span class="pill">👤 ${esc(s.name)}</span>
-        <span class="pill">⭐ ${s.score} pts</span>
+        <span class="pill">${ic('candle-flame')} ${s.score} pts</span>
       </div>`;
 
     function render() {
@@ -85,7 +93,7 @@
       if (s.phase === 'lobby') {
         app.innerHTML = `${topo(s)}
           <div class="grow centro">
-            <div class="logo">🕸️</div>
+            <div class="logo">${ic('spider-web')}</div>
             <h2>Você está dentro!</h2>
             <p class="sub pulse">Esperando o jogo começar...</p>
             <div class="chips">${s.lobby.map((n) => `<span class="chip">${esc(n)}</span>`).join('')}</div>
@@ -98,7 +106,7 @@
         if (s.answered) {
           app.innerHTML = `${topo(s)}
             <div class="grow centro">
-              <div class="logo">🔮</div>
+              <div class="logo">${ic('crystal-ball')}</div>
               <h2>Resposta enviada!</h2>
               <p class="sub pulse">Esperando os outros...</p>
               <button class="alt alt${s.choice}" style="margin:0 auto;max-width:320px;width:100%" disabled>
@@ -141,9 +149,9 @@
         const q = s.question;
         const naoRespondeu = s.choice === null;
         const caixa = s.correct
-          ? `<div class="resultado ok"><div class="grande">✅</div><h2>Acertou!</h2>
-               <div class="pts">+${s.gain}</div>${s.streak > 1 ? `<p>🔥 ${s.streak} seguidas!</p>` : ''}</div>`
-          : `<div class="resultado erro"><div class="grande">${naoRespondeu ? '⏰' : '💀'}</div>
+          ? `<div class="resultado ok"><div class="grande">${ic('imp-laugh')}</div><h2>Acertou!</h2>
+               <div class="pts">+${s.gain}</div>${s.streak > 1 ? `<p>${ic('fire')} ${s.streak} seguidas!</p>` : ''}</div>`
+          : `<div class="resultado erro"><div class="grande">${ic(naoRespondeu ? 'hourglass' : 'dead-head')}</div>
                <h2>${naoRespondeu ? 'Tempo esgotado!' : 'Errou!'}</h2></div>`;
         app.innerHTML = `${topo(s)}
           ${caixa}
@@ -152,7 +160,7 @@
           <div class="alts">
             ${q.alternativas.map((a, i) => `
               <div class="alt alt${i} ${i === s.correta ? 'certa' : 'apagada'}">
-                <span class="forma">${i === s.correta ? '✔' : FORMAS[i]}</span>${esc(a)}
+                <span class="forma">${i === s.correta ? CERTA : FORMAS[i]}</span>${esc(a)}
                 <span class="conta">${s.distribution[i]}</span>
               </div>`).join('')}
           </div>`;
@@ -160,7 +168,8 @@
 
       else if (s.phase === 'leaderboard') {
         app.innerHTML = `${topo(s)}
-          <h2 class="centro">🏆 Ranking</h2>
+          <div class="logo" style="margin:8px 0 4px;font-size:3rem">${ic('crowned-skull')}</div>
+          <h2 class="centro">Ranking</h2>
           <p class="sub">Depois da pergunta ${s.numero} de ${s.total}</p>
           <ul class="lista">
             ${s.top.map((p, i) => `<li class="${p.name === s.name ? 'eu' : ''}">
@@ -168,7 +177,7 @@
           </ul>
           ${s.rank > s.top.length ? `<ul class="lista"><li class="eu"><span class="pos">${s.rank}º</span>
             <span class="nome">${esc(s.name)}</span><b>${s.score}</b></li></ul>` : ''}
-          <p class="sub pulse" style="margin-top:16px">${s.isLast ? 'Preparando o pódio... 👀' : 'Próxima pergunta em instantes...'}</p>`;
+          <p class="sub pulse" style="margin-top:16px">${s.isLast ? `Preparando o pódio... ${ic('eyeball')}` : 'Próxima pergunta em instantes...'}</p>`;
       }
 
       else if (s.phase === 'podium') {
@@ -177,10 +186,13 @@
             <div class="quem">${esc(p.name)}</div><div class="pontos">${p.score} pts</div>
             <div class="bloco">${n}º</div></div>` : `<div class="degrau"></div>`;
         app.innerHTML = `${topo(s)}
-          <h1>🎃 Pódio 🎃</h1>
+          <div class="selo">FESTA RALOIN</div>
+          <div class="logo" style="margin:8px 0 4px">${ic('crowned-skull')}</div>
+          <h1>Pódio</h1>
           <div class="podio">${degrau(p2, 2)}${degrau(p1, 1)}${degrau(p3, 3)}</div>
           <p class="centro" style="font-size:1.2rem">Você terminou em <b>${s.rank}º lugar</b> com <b>${s.score}</b> pontos!</p>
-          <p class="sub">Feliz Halloween! 🦇</p>`;
+          <p class="tagline">Valeu por jogar!</p>
+          <p class="sub">Barcelona Produções</p>`;
       }
     }
   </script>

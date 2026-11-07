@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#120a1f">
-  <title>Host · Quiz de Halloween</title>
+  <meta name="theme-color" content="#0a0405">
+  <title>Host · Quiz Raloin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Butcherman&family=Montserrat:wght@400;700;800&family=Nosifer&display=swap">
+  <link rel="icon" href="/img/logo.jpg">
   <link rel="stylesheet" href="/style.css">
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
@@ -13,7 +17,9 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const FORMAS = ['▲', '◆', '●', '■'];
+    const ic = (n) => `<i class="ic" style="--m:url(/img/icons/${n}.svg)"></i>`;
+    const FORMAS = ['skull-crack', 'evil-bat', 'pumpkin-lantern', 'spectre'].map(ic);
+    const CERTA = ic('check-mark');
     const app = document.getElementById('app');
     const socket = io();
     const joinUrl = location.origin + '/';
@@ -39,8 +45,10 @@
     function telaLogin(erro = '') {
       app.innerHTML = `
         <div class="grow">
-          <div class="logo">🧙‍♀️</div>
+          <img class="marca" src="/img/logo.jpg" alt="Barcelona Produções">
+          <div class="selo">QUIZ RALOIN</div>
           <h1>Painel do host</h1>
+          <div class="risco"></div>
           <form id="f" class="card">
             <input id="senha" type="password" placeholder="Senha do host" autofocus>
             <button class="full" type="submit">Entrar</button>
@@ -57,15 +65,15 @@
     }
 
     const ROTULO = {
-      lobby: '▶️ Começar o jogo',
-      question: '⏭️ Encerrar tempo e revelar',
-      reveal: '🏆 Mostrar ranking',
+      lobby: 'Começar o jogo',
+      question: 'Encerrar tempo e revelar',
+      reveal: 'Mostrar ranking',
       podium: null,
     };
 
     function botaoAvancar(s) {
       let r = ROTULO[s.phase];
-      if (s.phase === 'leaderboard') r = s.numero >= s.total ? '🥇 Mostrar pódio' : `➡️ Pergunta ${s.numero + 1}`;
+      if (s.phase === 'leaderboard') r = s.numero >= s.total ? 'Mostrar pódio' : `Pergunta ${s.numero + 1}`;
       if (!r) return '';
       const desab = s.phase === 'lobby' && s.players.length === 0 ? 'disabled' : '';
       return `<button class="full" id="avancar" ${desab}>${r}</button>`;
@@ -79,7 +87,7 @@
       let meio = '';
       if (s.phase === 'lobby') {
         meio = `<div class="card centro">
-            <h3>Chame a galera 👻</h3>
+            <h3>Chame a galera</h3>
             <div id="qr" class="qr"></div>
             <div class="link">${esc(joinUrl)}</div>
           </div>`;
@@ -92,19 +100,19 @@
             <div class="alts">
               ${q.alternativas.map((a, i) => `
                 <div class="alt alt${i} ${i === q.correta ? 'certa' : ''}">
-                  <span class="forma">${i === q.correta ? '✔' : FORMAS[i]}</span>${esc(a)}
+                  <span class="forma">${i === q.correta ? CERTA : FORMAS[i]}</span>${esc(a)}
                   ${s.phase !== 'question' ? `<span class="conta">${s.distribution[i]}</span>` : ''}
                 </div>`).join('')}
             </div>
             ${s.phase === 'question' ? `<p class="centro" style="margin-top:12px"><b>${s.answered}</b> de <b>${s.connected}</b> responderam</p>` : ''}
           </div>`;
       } else if (s.phase === 'podium') {
-        meio = `<div class="card centro"><div class="logo">🏆</div><h2>Fim de jogo!</h2>
+        meio = `<div class="card centro"><div class="logo">${ic('crowned-skull')}</div><h2>Fim de jogo!</h2>
           <p class="sub">O pódio está aparecendo no celular de todo mundo.</p></div>`;
       }
 
       app.innerHTML = `
-        <div class="topo"><span class="pill">🧙‍♀️ Host</span><span class="pill">${nomeFase}</span></div>
+        <div class="topo"><span class="pill"><img class="marca mini" src="/img/logo.jpg" alt=""> Host</span><span class="pill">${nomeFase}</span></div>
         <div class="host-grid">
           ${meio}
           ${botaoAvancar(s)}
@@ -114,13 +122,13 @@
               ${s.players.map((p, i) => `
                 <li class="${p.connected ? '' : 'off'}">
                   <span class="pos">${i + 1}º</span>
-                  <span class="nome">${s.phase === 'question' ? (p.answered ? '✅ ' : '⏳ ') : ''}${esc(p.name)}</span>
+                  <span class="nome">${s.phase === 'question' ? (p.answered ? CERTA + ' ' : ic('hourglass') + ' ') : ''}${esc(p.name)}</span>
                   <b>${p.score}</b>
                   <button class="pequeno secundario" data-kick="${p.id}" title="Remover">✕</button>
                 </li>`).join('') || '<li class="sub">Ninguém entrou ainda</li>'}
             </ul>
           </div>
-          <button class="secundario full" id="reset">🔄 Reiniciar jogo (zera os pontos)</button>
+          <button class="secundario full" id="reset">Reiniciar jogo (zera os pontos)</button>
         </div>`;
 
       const av = document.getElementById('avancar');
@@ -142,7 +150,7 @@
         const tick = () => {
           const el = document.getElementById('tnum');
           const rest = Math.max(0, fim - Date.now());
-          if (el) el.textContent = `⏱️ ${Math.ceil(rest / 1000)}s`;
+          if (el) el.innerHTML = `${ic('hourglass')} ${Math.ceil(rest / 1000)}s`;
           if (rest <= 0) clearInterval(timerLoop);
         };
         tick();

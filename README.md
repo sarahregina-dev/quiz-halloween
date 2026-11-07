@@ -57,3 +57,7 @@ public/index.html  tela do jogador
 public/host.html   painel do host
 public/style.css   visual
 ```
+
+## Créditos
+
+Ícones: [game-icons.net](https://game-icons.net) (Lorc, Delapouite e colaboradores), licença [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
